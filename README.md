@@ -9,8 +9,10 @@
 Запуск — в программе «Терминал» (Cmd+Пробел → «Терминал» → Enter):
 
 ```
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ktm1782/ai-montazher-install/main/install.sh)"
+bash <(curl -fsSL https://raw.githubusercontent.com/ktm1782/ai-montazher-install/main/install.sh)
 ```
+
+Копируй команду целиком, не набирай руками: в ней нарочно нет кавычек — мессенджеры портят их.
 
 Мини-установщик обращается только к GitHub и, если на Mac нет Homebrew, к официальному
 установщику Homebrew. Ключи сервисов ты вводишь позже, на своём Mac, и они никуда не уходят.
