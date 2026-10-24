@@ -229,20 +229,63 @@ have_git() {
   "$g" --version >/dev/null 2>&1
 }
 
+# Пароль от Мака почти всегда латиницей: при русской или казахской раскладке он не подойдёт,
+# и sudo после трёх попыток роняет установку Homebrew (так было у первого покупателя 24.10.2026)
+keyboard_is_cyrillic() {
+  local src
+  src="$(defaults read com.apple.HIToolbox AppleCurrentKeyboardLayoutInputSourceID 2>/dev/null || true)"
+  case "${src}" in
+    *Russian*|*Kazakh*|*Ukrainian*|*Byelorussian*|*Belarusian*|*Cyrillic*|*Kyrgyz*|*Uzbek*) return 0 ;;
+  esac
+  return 1
+}
+
+warn_keyboard_layout() {
+  keyboard_is_cyrillic || return 0
+  warn "Сейчас включена русская (кириллическая) раскладка — пароль Мака наберётся русскими буквами и не подойдёт."
+  warn "Переключи раскладку на английскую (ABC): нажми «РУ» в строке меню вверху справа или Ctrl+Пробел."
+  if [ "${HAVE_TTY}" = 1 ]; then
+    printf '  Когда переключишь — нажми Enter: '
+    IFS= read -r _ </dev/tty || true
+    if keyboard_is_cyrillic; then
+      warn "Раскладка всё ещё кириллическая. Если пароль Мака латиницей — переключи её перед вводом пароля."
+    else
+      ok "раскладка английская"
+    fi
+  fi
+}
+
+# Почему Homebrew не встал — по выводу его установщика ($1 — файл с этим выводом)
+die_brew_failed() {
+  local out="$1" msg
+  if grep -q "incorrect password attempt" "${out}" 2>/dev/null; then
+    msg="Mac не принял пароль (три попытки). Проверь две вещи: раскладка английская (ABC, а не «РУ») и это пароль от входа в ЭТУ учётную запись Mac. Потом вставь ту же команду ещё раз."
+  elif grep -q -E "not in the sudoers|not allowed to run sudo|needs to be an Administrator|Need sudo access" "${out}" 2>/dev/null; then
+    msg="У этой учётной записи Mac нет прав администратора, а Homebrew без них не ставится. Войди в учётную запись администратора (или попроси её владельца ввести пароль) и вставь команду ещё раз."
+  else
+    msg="Homebrew не установился. Причина — в журнале ${LOG_FILE}. Пришли этот файл Талгату."
+  fi
+  rm -f "${out}"
+  die "${msg}"
+}
+
 install_homebrew() {
-  local brew_script
+  local brew_script brew_out
   if [ "$HAVE_TTY" != 1 ]; then die "Нужен Терминал: Mac спросит пароль. Запусти команду в программе «Терминал»."; fi
   say ""
   say "  Ставлю Homebrew официальным установщиком (brew.sh) — вместе с ним Apple ставит git."
   warn "Mac попросит пароль от входа в систему. Символы при вводе не видны — это нормально: набери пароль и нажми Enter."
   warn "Потом Homebrew попросит нажать Enter (RETURN), чтобы начать."
+  warn_keyboard_layout
   say ""
   brew_script="$(curl -fsSL --retry 3 https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
     || die "Не скачался официальный установщик Homebrew. Проверь интернет и запусти снова."
   log_line INFO "Запуск официального установщика Homebrew"
-  if ! /bin/bash -c "$brew_script" 2>&1 | tee -a "$LOG_FILE"; then
-    die "Homebrew не установился. Частая причина — у пользователя Mac нет прав администратора."
+  brew_out="$(mktemp "${TMPDIR:-/tmp}/ai-montazher-brew.XXXXXX")"
+  if ! /bin/bash -c "$brew_script" 2>&1 | tee -a "$LOG_FILE" "$brew_out"; then
+    die_brew_failed "$brew_out"
   fi
+  rm -f "$brew_out"
   load_brew_env
 }
 
