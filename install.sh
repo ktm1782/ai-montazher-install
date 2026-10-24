@@ -2,7 +2,7 @@
 # =============================================================================
 # ИИ-монтажёр — мини-установщик (лежит в открытом репозитории, продукта внутри нет).
 #
-#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ktm1782/ai-montazher-install/main/install.sh)"
+#   bash <(curl -fsSL https://raw.githubusercontent.com/ktm1782/ai-montazher-install/main/install.sh)
 #
 # Что делает:
 #   1. Проверяет Mac и ставит git (через Homebrew или инструменты Apple).
